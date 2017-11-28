@@ -11,17 +11,25 @@ label = mpimg.imread("feature_1.png")
 # Stack the image and label
 cat = np.dstack((img,label))
 
-loops = 1
+# one loop is a crop, produces 12 examples
+loops = 4
 n_examples = 12 * loops
-images = np.empty((n_examples, 299, 299, 4))
+
+# generate a set of unique coordinates to crop from
 max_x = cat.shape[0]-299
 max_y = cat.shape[1]-299
-pixels = max_x * max_y
-
+cord_set = set()
+while len(cord_set) < loops:
+    x, y = np.random.choice(max_x - 1), np.random.choice(max_y - 1)
+    cord_set.add((x, y))
+cord_list = list(cord_set)
+# Make crops, flip, rotate and store in a 4D vector
 i = 0
+j = 0
+images = np.empty((n_examples, 299, 299, 4))
 while i < n_examples:
-    x = 0
-    y = 0
+    x, y = cord_list[j]
+    j = j + 1
     crop = cat[x:x+299, y:y+299, :]
     images[0+i, :, :, :] = crop
     images[1+i, :, :, :] = np.rot90(crop, 1)
@@ -42,6 +50,7 @@ while i < n_examples:
 
     i = i + 12
 labels = images[:,:,:,3]
+# save the labels so they can be used later, the ordering is the same as the images
 np.savez_compressed('storage/labels', labels)
 images = images[:,:,:,0:3]
 images = images * 255
