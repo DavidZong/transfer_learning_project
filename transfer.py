@@ -5,17 +5,47 @@ import inception
 from inception import transfer_values_cache
 import os
 
+# Load in image and label
 img = mpimg.imread("phase.png")
-
-crop = img[0:299, 0:299, :]
-
-images = np.empty((3, 299, 299, 3))
-images[0,:,:,:] = crop
-images[1,:,:,:] = np.fliplr(crop)
-images[2,:,:,:] = np.flipud(crop)
-
-images = images * 255
 label = mpimg.imread("feature_1.png")
+# Stack the image and label
+cat = np.dstack((img,label))
+
+loops = 1
+n_examples = 12 * loops
+images = np.empty((n_examples, 299, 299, 4))
+max_x = cat.shape[0]-299
+max_y = cat.shape[1]-299
+pixels = max_x * max_y
+
+i = 0
+while i < n_examples:
+    x = 0
+    y = 0
+    crop = cat[x:x+299, y:y+299, :]
+    images[0+i, :, :, :] = crop
+    images[1+i, :, :, :] = np.rot90(crop, 1)
+    images[2+i, :, :, :] = np.rot90(crop, 2)
+    images[3+i, :, :, :] = np.rot90(crop, 3)
+
+    lr = np.fliplr(crop)
+    images[4+i, :, :, :] = lr
+    images[5+i, :, :, :] = np.rot90(lr, 1)
+    images[6+i, :, :, :] = np.rot90(lr, 2)
+    images[7+i, :, :, :] = np.rot90(lr, 3)
+
+    ud = np.flipud(crop)
+    images[8+i, :, :, :] = ud
+    images[9+i, :, :, :] = np.rot90(ud, 1)
+    images[10+i, :, :, :] = np.rot90(ud, 2)
+    images[11+i, :, :, :] = np.rot90(ud, 3)
+
+    i = i + 12
+labels = images[:,:,:,3]
+np.savez_compressed('storage/labels', labels)
+images = images[:,:,:,0:3]
+images = images * 255
+
 
 model = inception.Inception()
 
