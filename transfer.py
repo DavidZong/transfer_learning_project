@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import inception
 from inception import transfer_values_cache
 import os
+import tensorflow as tf
 
 # Load in image and label
 img = mpimg.imread("phase.png")
@@ -13,7 +14,7 @@ cat = np.dstack((img,label))
 
 # one loop is a crop, produces 12 examples
 loops = 4
-n_examples = 12 * loops
+n_examples = 8 * loops
 
 # generate a set of unique coordinates to crop from
 max_x = cat.shape[0]-299
@@ -42,43 +43,103 @@ while i < n_examples:
     images[6+i, :, :, :] = np.rot90(lr, 2)
     images[7+i, :, :, :] = np.rot90(lr, 3)
 
-    ud = np.flipud(crop)
-    images[8+i, :, :, :] = ud
-    images[9+i, :, :, :] = np.rot90(ud, 1)
-    images[10+i, :, :, :] = np.rot90(ud, 2)
-    images[11+i, :, :, :] = np.rot90(ud, 3)
-
-    i = i + 12
+    i = i + 8
 labels = images[:,:,:,3]
 # save the labels so they can be used later, the ordering is the same as the images
 np.savez_compressed('storage/labels', labels)
 images = images[:,:,:,0:3]
 images = images * 255
 
-
+# calculate the transfer values using Inception, or load if already done
 model = inception.Inception()
-
 file_path_cache_train = os.path.join("storage", 'inception_image_train.pkl')
-
 transfer_values_training = transfer_values_cache(cache_path=file_path_cache_train, images=images, model=model)
-print(transfer_values_training.shape)
 
+# Initialize variables for 3 layer network
+transfer_len = model.transfer_len
+output_len = 89401
+# Placeholder variables for the input and output
+x = tf.placeholder(tf.float32, shape=[None, transfer_len], name='x')
+y_true = tf.placeholder(tf.float32, shape=[None, output_len], name='y_true')
+# Placeholder for the phase, True if training, False if testing. For batchnorm
+train = tf.placeholder(tf.bool)
 
-def plot_transfer_values(i):
-    print("Input image:")
+def weight_variable(name, shape):
+    return tf.get_variable(name, shape, initializer=tf.contrib.layers.xavier_initializer())
 
-    # Plot the i'th image from the test-set.
-    plt.imshow(images[i], interpolation='nearest')
-    plt.show()
+def bias_variable(shape):
+    return tf.constant(0.1, shape=shape)
 
-    print("Transfer-values for the image using Inception model:")
+def variable_summaries(var):
+  """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
+  with tf.name_scope('summaries'):
+    mean = tf.reduce_mean(var)
+    tf.summary.scalar('mean', mean)
+    with tf.name_scope('stddev'):
+      stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
+    tf.summary.scalar('stddev', stddev)
+    tf.summary.scalar('max', tf.reduce_max(var))
+    tf.summary.scalar('min', tf.reduce_min(var))
+    tf.summary.histogram('histogram', var)
 
-    # Transform the transfer-values into an image.
-    img = transfer_values_training[i]
-    img = img.reshape((32, 64))
+# Fully connected layer
+with tf.name_scope('fc1'):
+    with tf.name_scope('weight'):
+        W_fc1 = weight_variable('wfc1', [transfer_len, 1024])
+        variable_summaries(W_fc1)
+    with tf.name_scope('bias'):
+        b_fc1 = bias_variable([1024])
+        variable_summaries(b_fc1)
+    with tf.name_scope('net_input'):
+        z_fc1 = tf.matmul(x, W_fc1) + b_fc1
+        variable_summaries(z_fc1)
+    with tf.name_scope('batch_norm'):
+        bn_fc1 = tf.layers.batch_normalization(z_fc1, training=train)
+    with tf.name_scope('activation'):
+        h_fc1 = tf.nn.relu(bn_fc1)
+        variable_summaries(h_fc1)
 
-    # Plot the image for the transfer-values.
-    plt.imshow(img, interpolation='nearest', cmap='Reds')
-    plt.show()
+# Apply dropout
+keep_prob = tf.placeholder(tf.float32)
+h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
 
-plot_transfer_values(i=2)
+# softmax
+with tf.name_scope('softmax'):
+    with tf.name_scope('weight'):
+        W_fc2 = weight_variable('wfc2', [1024, output_len])
+        variable_summaries(W_fc2)
+    with tf.name_scope('bias'):
+        b_fc2 = bias_variable([output_len])
+        variable_summaries(b_fc2)
+    with tf.name_scope('net_input'):
+        y_ = tf.nn.sigmoid(tf.matmul(h_fc1_drop, W_fc2) + b_fc2)
+        variable_summaries(y_)
+
+update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(logits=y_, labels=y_true)
+loss = tf.reduce_mean(cross_entropy)
+with tf.control_dependencies(update_ops):
+    train_step = tf.train.AdamOptimizer(1e-4).minimize(loss)
+correct_prediction = tf.equal(tf.round(y_), y_true)
+accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+
+max_iter = 1000
+
+# flatten labels
+f_labels = np.zeros([labels.shape[0], output_len])
+for i in range(labels.shape[0]):
+    f_labels[i] = labels[i].flatten()
+
+# Training loop
+with tf.Session() as s:
+    s.run(tf.global_variables_initializer())
+
+    for i in range(max_iter):
+        batch_x = transfer_values_training
+        batch_y = f_labels
+        s.run(train_step, feed_dict={x: batch_x, y_true: f_labels, keep_prob: 0.5, train: 1})
+
+        # Test the training accuracy every so often
+        if i % 100 == 0:
+            train_accuracy = accuracy.eval(feed_dict={x: batch_x, y_true: batch_y, keep_prob: 1.0, train: 0})
+            print("step %d, training accuracy %g" % (i, train_accuracy))
