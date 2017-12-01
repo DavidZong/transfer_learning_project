@@ -134,21 +134,30 @@ f_labels = np.zeros([labels.shape[0], output_len])
 for i in range(labels.shape[0]):
     f_labels[i] = labels[i].flatten()
 
+# separate data set to training and test sets 70/30 split (roughly)
+test_size = round(0.3 * n_examples)
+test_labels = f_labels[0:test_size]
+train_labels = f_labels[test_size:]
+test_data = transfer_values_training[0:test_size]
+train_data = transfer_values_training[test_size:]
+
 # Training loop
 with tf.Session() as s:
     s.run(tf.global_variables_initializer())
     batch_x = np.zeros([batchsize, model.transfer_len])
     batch_y = np.zeros([batchsize, output_len])
     for i in range(max_iter):
-        nsamples = f_labels.shape[0]
+        nsamples = train_labels.shape[0]
         perm = np.arange(nsamples)
         np.random.shuffle(perm)
         for j in range(batchsize):
-            batch_x[j, :] = transfer_values_training[perm[j], :]
-            batch_y[j, :] = f_labels[perm[j], :]
+            batch_x[j, :] = train_data[perm[j], :]
+            batch_y[j, :] = train_labels[perm[j], :]
         s.run(train_step, feed_dict={x: batch_x, y_true: batch_y, keep_prob: 0.5, train: 1})
 
         # Test the training accuracy every so often
         if i % 100 == 0:
             train_accuracy = accuracy.eval(feed_dict={x: batch_x, y_true: batch_y, keep_prob: 1.0, train: 0})
             print("step %d, training accuracy %g" % (i, train_accuracy))
+            test_accuracy = accuracy.eval(feed_dict={x: test_data, y_true: test_labels, keep_prob: 1.0, train: 0})
+            print("step %d, test accuracy %g" % (i, test_accuracy))
