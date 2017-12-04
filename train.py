@@ -5,9 +5,15 @@ from inception import transfer_values_cache
 import os
 
 # Open saved files
+storage_path = 'storage_small'
 model = inception.Inception()
-file_path_cache_train = os.path.join("storage", 'inception_image_train.pkl')
-transfer_values_training = transfer_values_cache(cache_path=file_path_cache_train, images=images, model=model)
+file_path_cache_train = os.path.join(storage_path, 'inception_image_train.pkl')
+transfer_values_training = transfer_values_cache(cache_path=file_path_cache_train, model=model)
+label_path = os.path.join(storage_path, 'labels.npz')
+print('Loading Labels...')
+labels_array = np.load(label_path)
+labels = labels_array['arr_0']
+print('done')
 
 # Initialize variables for 3 layer network
 transfer_len = model.transfer_len
@@ -89,7 +95,7 @@ for i in range(labels.shape[0]):
     f_labels[i] = labels[i].flatten()
 
 # separate data set to training and test sets 70/30 split (roughly)
-test_size = round(0.3 * n_examples)
+test_size = round(0.3 * labels.shape[0])
 test_labels = f_labels[0:test_size]
 train_labels = f_labels[test_size:]
 test_data = transfer_values_training[0:test_size]

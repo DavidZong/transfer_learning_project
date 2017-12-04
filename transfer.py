@@ -5,6 +5,10 @@ import inception
 from inception import transfer_values_cache
 import os
 
+# Specify folder
+storage_path = 'storage_small'
+if not os.path.exists(storage_path):
+    os.makedirs(storage_path)
 
 # Load in image and label
 img = mpimg.imread("phase.png")
@@ -13,7 +17,7 @@ label = mpimg.imread("feature_1.png")
 cat = np.dstack((img,label))
 
 # one loop is a crop, produces 12 examples
-loops = 1000
+loops = 4
 n_examples = 8 * loops
 
 # generate a set of unique coordinates to crop from
@@ -50,12 +54,13 @@ while i < n_examples:
 labels = images[:,:,:,3]
 # save the labels so they can be used later, the ordering is the same as the images
 print("saving labels...")
-np.savez_compressed('storage/labels', labels)
+label_path = os.path.join(storage_path, 'labels')
+np.savez_compressed(label_path, labels)
 print("done.")
 images = images[:,:,:,0:3]
 images = images * 255
 
 # calculate the transfer values using Inception, or load if already done
 model = inception.Inception()
-file_path_cache_train = os.path.join("storage", 'inception_image_train.pkl')
+file_path_cache_train = os.path.join(storage_path, 'inception_image_train.pkl')
 transfer_values_training = transfer_values_cache(cache_path=file_path_cache_train, images=images, model=model)
