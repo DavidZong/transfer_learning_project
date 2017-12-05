@@ -5,7 +5,7 @@ from inception import transfer_values_cache
 import os
 
 # Open saved files
-storage_path = 'storage_small'
+storage_path = 'storage'
 model = inception.Inception()
 file_path_cache_train = os.path.join(storage_path, 'inception_image_train.pkl')
 transfer_values_training = transfer_values_cache(cache_path=file_path_cache_train, model=model)
@@ -101,9 +101,21 @@ train_labels = f_labels[test_size:]
 test_data = transfer_values_training[0:test_size]
 train_data = transfer_values_training[test_size:]
 
+
+
 # Training loop
 with tf.Session() as s:
+    # setup summary writer
+    tf.summary.scalar("loss", loss)
+    summary_op = tf.summary.merge_all()
+    test_summary = tf.summary.scalar("test_accuracy", accuracy)
+    training_summary = tf.summary.scalar("training_accuracy", accuracy)
+    saver = tf.train.Saver()
+    result_dir = 'results'
+    summary_writer = tf.summary.FileWriter(result_dir, s.graph)
     s.run(tf.global_variables_initializer())
+
+    # Loop optimization
     batch_x = np.zeros([batchsize, model.transfer_len])
     batch_y = np.zeros([batchsize, output_len])
     for i in range(max_iter):
@@ -117,7 +129,19 @@ with tf.Session() as s:
 
         # Test the training accuracy every so often
         if i % 100 == 0:
+            test_accuracy = s.run(test_summary,
+                                     feed_dict={x: batch_x, y_true: batch_y, keep_prob: 1.0, train: 0})
+            train_accuracy = s.run(training_summary,
+                                      feed_dict={x: test_data, y_true: test_labels, keep_prob: 1.0, train: 0})
+            summary_str = s.run(summary_op,
+                                   feed_dict={x: batch_x, y_true: batch_y, keep_prob: 1.0, train: 0})
+            summary_writer.add_summary(summary_str, i)
+            summary_writer.add_summary(test_accuracy, i)
+            summary_writer.add_summary(train_accuracy, i)
+            summary_writer.flush()
             train_accuracy = accuracy.eval(feed_dict={x: batch_x, y_true: batch_y, keep_prob: 1.0, train: 0})
             print("step %d, training accuracy %g" % (i, train_accuracy))
             test_accuracy = accuracy.eval(feed_dict={x: test_data, y_true: test_labels, keep_prob: 1.0, train: 0})
             print("step %d, test accuracy %g" % (i, test_accuracy))
+    checkpoint_file = os.path.join(result_dir, 'final_checkpoint')
+    saver.save(s, checkpoint_file)
