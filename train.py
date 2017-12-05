@@ -18,6 +18,8 @@ print('done')
 # Initialize variables for 3 layer network
 transfer_len = model.transfer_len
 output_len = 89401
+# Make Tensorflow session
+s = tf.InteractiveSession()
 # Placeholder variables for the input and output
 x = tf.placeholder(tf.float32, shape=[None, transfer_len], name='x')
 y_true = tf.placeholder(tf.float32, shape=[None, output_len], name='y_true')
@@ -101,47 +103,43 @@ train_labels = f_labels[test_size:]
 test_data = transfer_values_training[0:test_size]
 train_data = transfer_values_training[test_size:]
 
+# setup summary writer
+tf.summary.scalar("loss", loss)
+summary_op = tf.summary.merge_all()
+test_summary = tf.summary.scalar("test_accuracy", accuracy)
+training_summary = tf.summary.scalar("training_accuracy", accuracy)
+saver = tf.train.Saver()
+result_dir = 'results/test'
+summary_writer = tf.summary.FileWriter(result_dir, s.graph)
+s.run(tf.global_variables_initializer())
 
+# Loop optimization
+batch_x = np.zeros([batchsize, model.transfer_len])
+batch_y = np.zeros([batchsize, output_len])
+for i in range(max_iter):
+    nsamples = train_labels.shape[0]
+    perm = np.arange(nsamples)
+    np.random.shuffle(perm)
+    for j in range(batchsize):
+        batch_x[j, :] = train_data[perm[j], :]
+        batch_y[j, :] = train_labels[perm[j], :]
+    s.run(train_step, feed_dict={x: batch_x, y_true: batch_y, keep_prob: 0.5, train: 1})
 
-# Training loop
-with tf.Session() as s:
-    # setup summary writer
-    tf.summary.scalar("loss", loss)
-    summary_op = tf.summary.merge_all()
-    test_summary = tf.summary.scalar("test_accuracy", accuracy)
-    training_summary = tf.summary.scalar("training_accuracy", accuracy)
-    saver = tf.train.Saver()
-    result_dir = 'results'
-    summary_writer = tf.summary.FileWriter(result_dir, s.graph)
-    s.run(tf.global_variables_initializer())
-
-    # Loop optimization
-    batch_x = np.zeros([batchsize, model.transfer_len])
-    batch_y = np.zeros([batchsize, output_len])
-    for i in range(max_iter):
-        nsamples = train_labels.shape[0]
-        perm = np.arange(nsamples)
-        np.random.shuffle(perm)
-        for j in range(batchsize):
-            batch_x[j, :] = train_data[perm[j], :]
-            batch_y[j, :] = train_labels[perm[j], :]
-        s.run(train_step, feed_dict={x: batch_x, y_true: batch_y, keep_prob: 0.5, train: 1})
-
-        # Test the training accuracy every so often
-        if i % 100 == 0:
-            test_accuracy = s.run(test_summary,
-                                     feed_dict={x: batch_x, y_true: batch_y, keep_prob: 1.0, train: 0})
-            train_accuracy = s.run(training_summary,
-                                      feed_dict={x: test_data, y_true: test_labels, keep_prob: 1.0, train: 0})
-            summary_str = s.run(summary_op,
-                                   feed_dict={x: batch_x, y_true: batch_y, keep_prob: 1.0, train: 0})
-            summary_writer.add_summary(summary_str, i)
-            summary_writer.add_summary(test_accuracy, i)
-            summary_writer.add_summary(train_accuracy, i)
-            summary_writer.flush()
-            train_accuracy = accuracy.eval(feed_dict={x: batch_x, y_true: batch_y, keep_prob: 1.0, train: 0})
-            print("step %d, training accuracy %g" % (i, train_accuracy))
-            test_accuracy = accuracy.eval(feed_dict={x: test_data, y_true: test_labels, keep_prob: 1.0, train: 0})
-            print("step %d, test accuracy %g" % (i, test_accuracy))
-    checkpoint_file = os.path.join(result_dir, 'final_checkpoint')
-    saver.save(s, checkpoint_file)
+    # Test the training accuracy every so often
+    if i % 100 == 0:
+        train_accuracy = s.run(training_summary,
+                                 feed_dict={x: batch_x, y_true: batch_y, keep_prob: 1.0, train: 0})
+        test_accuracy = s.run(test_summary,
+                                  feed_dict={x: test_data, y_true: test_labels, keep_prob: 1.0, train: 0})
+        summary_str = s.run(summary_op,
+                               feed_dict={x: batch_x, y_true: batch_y, keep_prob: 1.0, train: 0})
+        summary_writer.add_summary(summary_str, i)
+        summary_writer.add_summary(test_accuracy, i)
+        summary_writer.add_summary(train_accuracy, i)
+        summary_writer.flush()
+        train_accuracy = accuracy.eval(feed_dict={x: batch_x, y_true: batch_y, keep_prob: 1.0, train: 0})
+        print("step %d, training accuracy %g" % (i, train_accuracy))
+        test_accuracy = accuracy.eval(feed_dict={x: test_data, y_true: test_labels, keep_prob: 1.0, train: 0})
+        print("step %d, test accuracy %g" % (i, test_accuracy))
+checkpoint_file = os.path.join(result_dir, 'final_checkpoint')
+saver.save(s, checkpoint_file)
