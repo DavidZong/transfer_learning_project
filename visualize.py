@@ -3,7 +3,6 @@ import os
 import inception
 from inception import transfer_values_cache
 import numpy as np
-import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 
 # Load in trained model
@@ -34,13 +33,24 @@ keep_prob = graph.get_tensor_by_name("Placeholder_1:0")
 prediction = s.run(y_, feed_dict={x: transfer_values_training, train:False, keep_prob:1})
 
 # display image
-example_index = 1
+example_index = 2
 image = transfer_values_training[example_index]
 label = labels[example_index]
 predicted = np.reshape(prediction[example_index], (299,299))
+
 
 fig = plt.figure()
 ax1 = fig.add_subplot(1,2,1)
 ax1.imshow(label)
 ax2 = fig.add_subplot(1,2,2)
 ax2.imshow(predicted)
+
+# display with thresholding
+threshold = 0.9
+binary_mask = (predicted > threshold).astype(np.int_)
+
+fig = plt.figure()
+ax1 = fig.add_subplot(1,2,1)
+ax1.imshow(label)
+ax2 = fig.add_subplot(1,2,2)
+ax2.imshow(binary_mask)
