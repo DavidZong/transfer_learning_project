@@ -5,7 +5,7 @@ from inception import transfer_values_cache
 import os
 
 # Open saved files
-storage_path = 'storage'
+storage_path = 'storage_small'
 model = inception.Inception()
 file_path_cache_train = os.path.join(storage_path, 'inception_image_train.pkl')
 transfer_values_training = transfer_values_cache(cache_path=file_path_cache_train, model=model)
@@ -24,7 +24,7 @@ s = tf.InteractiveSession()
 x = tf.placeholder(tf.float32, shape=[None, transfer_len], name='x')
 y_true = tf.placeholder(tf.float32, shape=[None, output_len], name='y_true')
 # Placeholder for the phase, True if training, False if testing. For batchnorm
-train = tf.placeholder(tf.bool)
+train = tf.placeholder(tf.bool, name='is_training')
 
 # helper function to make a weight variable
 def weight_variable(name, shape):
@@ -65,7 +65,7 @@ with tf.name_scope('fc1'):
         variable_summaries(h_fc1)
 
 # Apply dropout
-keep_prob = tf.placeholder(tf.float32)
+keep_prob = tf.placeholder(tf.float32, name='keep_prob')
 h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
 
 # softmax
@@ -77,7 +77,7 @@ with tf.name_scope('softmax'):
         b_fc2 = bias_variable([output_len])
         variable_summaries(b_fc2)
     with tf.name_scope('net_input'):
-        y_ = tf.nn.sigmoid(tf.matmul(h_fc1_drop, W_fc2) + b_fc2)
+        y_ = tf.nn.sigmoid(tf.matmul(h_fc1_drop, W_fc2) + b_fc2, name='prediction')
         variable_summaries(y_)
 
 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -88,7 +88,7 @@ with tf.control_dependencies(update_ops):
 correct_prediction = tf.equal(tf.round(y_), y_true)
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
-max_iter = 10000
+max_iter = 101
 batchsize = 10
 
 # flatten labels, convert to a non-one hot vector encoding (9000 1s or 0s).
@@ -109,7 +109,7 @@ summary_op = tf.summary.merge_all()
 test_summary = tf.summary.scalar("test_accuracy", accuracy)
 training_summary = tf.summary.scalar("training_accuracy", accuracy)
 saver = tf.train.Saver()
-result_dir = 'results/test'
+result_dir = 'results/quick'
 summary_writer = tf.summary.FileWriter(result_dir, s.graph)
 s.run(tf.global_variables_initializer())
 
