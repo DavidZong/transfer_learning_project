@@ -24,12 +24,13 @@ print('Processing took %s sec\n' % (proc_img_end_time - proc_img_start_time))
 transfer_len = model.transfer_len
 output_len = 89401
 
+
 # Placeholder variables for the input and output
 x = tf.placeholder(tf.float32, shape=[None, transfer_len], name='x')
 y_true = tf.placeholder(tf.float32, shape=[None, output_len], name='y_true')
 
 # Placeholder for the phase, True if training, False if testing. For batchnorm
-train = tf.placeholder(tf.bool)
+train = tf.placeholder(tf.bool, name='is_training')
 
 # helper function to make a weight variable
 def weight_variable(name, shape):
@@ -71,7 +72,7 @@ with tf.name_scope('fc1'):
         variable_summaries(h_fc1)
 
 # Apply dropout
-keep_prob = tf.placeholder(tf.float32)
+keep_prob = tf.placeholder(tf.float32, name='keep_prob')
 h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
 
 # softmax
@@ -83,7 +84,7 @@ with tf.name_scope('softmax'):
         b_fc2 = bias_variable([output_len])
         variable_summaries(b_fc2)
     with tf.name_scope('net_input'):
-        y_ = tf.nn.sigmoid(tf.matmul(h_fc1_drop, W_fc2) + b_fc2)
+        y_ = tf.nn.sigmoid(tf.matmul(h_fc1_drop, W_fc2) + b_fc2, name='prediction')
         variable_summaries(y_)
 
 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -96,8 +97,10 @@ with tf.control_dependencies(update_ops):
 correct_prediction = tf.equal(tf.round(y_), y_true)
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
+
 max_iter = 1000
 batchsize = 100
+
 
 # flatten labels, convert to a non-one hot vector encoding (9000 1s or 0s).
 f_labels = np.zeros([labels.shape[0], output_len])
@@ -110,6 +113,7 @@ test_labels = f_labels[0:test_size]
 train_labels = f_labels[test_size:]
 test_data = transfer_values_training[0:test_size]
 train_data = transfer_values_training[test_size:]
+
 
 
 start_time = time.time()
@@ -161,4 +165,3 @@ with tf.Session() as s:
 end_time = time.time()
 print('Total sec: %s sec' % (end_time-start_time))
 print('Total min: %s min\n' % ((end_time-start_time)/60.0))
-
