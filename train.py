@@ -3,30 +3,38 @@ import numpy as np
 import inception
 from inception import transfer_values_cache
 import os
+import time
 
 # Open saved files
-storage_path = 'storage'
+storage_path = 'storage_small'
 model = inception.Inception()
 file_path_cache_train = os.path.join(storage_path, 'inception_image_train.pkl')
 transfer_values_training = transfer_values_cache(cache_path=file_path_cache_train, model=model)
 label_path = os.path.join(storage_path, 'labels.npz')
-print('Loading Labels...')
+
+print('\nLoading Labels...')
+proc_img_start_time = time.time()
 labels_array = np.load(label_path)
 labels = labels_array['arr_0']
-print('done')
+proc_img_end_time = time.time()
+print('done\n')
+print('Processing took %s sec\n' % (proc_img_end_time - proc_img_start_time))
 
 # Initialize variables for 3 layer network
 transfer_len = model.transfer_len
 output_len = 89401
+
 # Placeholder variables for the input and output
 x = tf.placeholder(tf.float32, shape=[None, transfer_len], name='x')
 y_true = tf.placeholder(tf.float32, shape=[None, output_len], name='y_true')
+
 # Placeholder for the phase, True if training, False if testing. For batchnorm
 train = tf.placeholder(tf.bool)
 
 # helper function to make a weight variable
 def weight_variable(name, shape):
-    return tf.get_variable(name, shape, initializer=tf.contrib.layers.xavier_initializer())
+    initial = tf.contrib.layers.xavier_initializer()
+    return tf.get_variable(name, shape, initializer=initial)
 
 # helper function to make a bias variable
 def bias_variable(shape):
@@ -80,14 +88,16 @@ with tf.name_scope('softmax'):
 
 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(logits=y_, labels=y_true)
+#cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=y_, labels=y_true)
 loss = tf.reduce_mean(cross_entropy)
+
 with tf.control_dependencies(update_ops):
-    train_step = tf.train.AdamOptimizer(1e-4).minimize(loss)
+    train_step = tf.train.AdamOptimizer(1e-6).minimize(loss)
 correct_prediction = tf.equal(tf.round(y_), y_true)
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
-max_iter = 10000
-batchsize = 10
+max_iter = 1000
+batchsize = 100
 
 # flatten labels, convert to a non-one hot vector encoding (9000 1s or 0s).
 f_labels = np.zeros([labels.shape[0], output_len])
@@ -102,7 +112,9 @@ test_data = transfer_values_training[0:test_size]
 train_data = transfer_values_training[test_size:]
 
 
-
+start_time = time.time()
+print('\nStart time: ' + time.strftime("%a, %d %b %Y %H:%M:%S +0000",
+                                        time.gmtime()) + '\n')
 # Training loop
 with tf.Session() as s:
     # setup summary writer
@@ -111,7 +123,7 @@ with tf.Session() as s:
     test_summary = tf.summary.scalar("test_accuracy", accuracy)
     training_summary = tf.summary.scalar("training_accuracy", accuracy)
     saver = tf.train.Saver()
-    result_dir = 'results'
+    result_dir = 'results_lr10e6'
     summary_writer = tf.summary.FileWriter(result_dir, s.graph)
     s.run(tf.global_variables_initializer())
 
@@ -145,3 +157,8 @@ with tf.Session() as s:
             print("step %d, test accuracy %g" % (i, test_accuracy))
     checkpoint_file = os.path.join(result_dir, 'final_checkpoint')
     saver.save(s, checkpoint_file)
+
+end_time = time.time()
+print('Total sec: %s sec' % (end_time-start_time))
+print('Total min: %s min\n' % ((end_time-start_time)/60.0))
+
