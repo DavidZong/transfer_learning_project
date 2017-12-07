@@ -89,7 +89,7 @@ accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 max_iter = 10000
 batchsize = 10
 
-# flatten labels
+# flatten labels, convert to a non-one hot vector encoding (9000 1s or 0s).
 f_labels = np.zeros([labels.shape[0], output_len])
 for i in range(labels.shape[0]):
     f_labels[i] = labels[i].flatten()
