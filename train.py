@@ -6,7 +6,7 @@ import os
 import time
 
 # Open saved files
-storage_path = 'storage_small'
+storage_path = 'storage_small_m'
 model = inception.Inception()
 file_path_cache_train = os.path.join(storage_path, 'inception_image_train.pkl')
 transfer_values_training = transfer_values_cache(cache_path=file_path_cache_train, model=model)
@@ -30,7 +30,7 @@ x = tf.placeholder(tf.float32, shape=[None, transfer_len], name='x')
 y_true = tf.placeholder(tf.float32, shape=[None, output_len], name='y_true')
 
 # Placeholder for the phase, True if training, False if testing. For batchnorm
-train = tf.placeholder(tf.bool, name='is_training')
+train = tf.placeholder(tf.bool)
 
 # helper function to make a weight variable
 def weight_variable(name, shape):
@@ -72,7 +72,7 @@ with tf.name_scope('fc1'):
         variable_summaries(h_fc1)
 
 # Apply dropout
-keep_prob = tf.placeholder(tf.float32, name='keep_prob')
+keep_prob = tf.placeholder(tf.float32)
 h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
 
 # softmax
@@ -84,7 +84,7 @@ with tf.name_scope('softmax'):
         b_fc2 = bias_variable([output_len])
         variable_summaries(b_fc2)
     with tf.name_scope('net_input'):
-        y_ = tf.nn.sigmoid(tf.matmul(h_fc1_drop, W_fc2) + b_fc2, name='prediction')
+        y_ = tf.nn.sigmoid(tf.matmul(h_fc1_drop, W_fc2) + b_fc2)
         variable_summaries(y_)
 
 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -93,13 +93,13 @@ cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(logits=y_, labels=y_true
 loss = tf.reduce_mean(cross_entropy)
 
 with tf.control_dependencies(update_ops):
-    train_step = tf.train.AdamOptimizer(1e-6).minimize(loss)
+    train_step = tf.train.AdamOptimizer(1e-5).minimize(loss)
 correct_prediction = tf.equal(tf.round(y_), y_true)
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
 
-max_iter = 1000
-batchsize = 100
+max_iter = 10000
+batchsize = 10
 
 
 # flatten labels, convert to a non-one hot vector encoding (9000 1s or 0s).
@@ -127,7 +127,7 @@ with tf.Session() as s:
     test_summary = tf.summary.scalar("test_accuracy", accuracy)
     training_summary = tf.summary.scalar("training_accuracy", accuracy)
     saver = tf.train.Saver()
-    result_dir = 'results_lr10e6'
+    result_dir = 'results/m_long'
     summary_writer = tf.summary.FileWriter(result_dir, s.graph)
     s.run(tf.global_variables_initializer())
 
@@ -145,9 +145,9 @@ with tf.Session() as s:
 
         # Test the training accuracy every so often
         if i % 100 == 0:
-            test_accuracy = s.run(test_summary,
-                                     feed_dict={x: batch_x, y_true: batch_y, keep_prob: 1.0, train: 0})
             train_accuracy = s.run(training_summary,
+                                     feed_dict={x: batch_x, y_true: batch_y, keep_prob: 1.0, train: 0})
+            test_accuracy = s.run(test_summary,
                                       feed_dict={x: test_data, y_true: test_labels, keep_prob: 1.0, train: 0})
             summary_str = s.run(summary_op,
                                    feed_dict={x: batch_x, y_true: batch_y, keep_prob: 1.0, train: 0})

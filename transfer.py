@@ -6,13 +6,13 @@ from inception import transfer_values_cache
 import os
 
 # Specify folder
-storage_path = 'storage_small'
+storage_path = 'storage_small_m'
 if not os.path.exists(storage_path):
     os.makedirs(storage_path)
 
 # Load in image and label
-img = mpimg.imread("phase.png")
-label = mpimg.imread("feature_1.png")
+img = mpimg.imread("phase_mcf10a.png")
+label = mpimg.imread("feature_1_mcf10a.png")
 # Stack the image and label
 cat = np.dstack((img,label))
 
