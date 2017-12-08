@@ -3,5 +3,5 @@
 
 ## Schematic
 
-![](./poster-files/figure_transfer_Learning_schematic_hiRes.jpg)
+![](./poster-files/figure_transfer_Learning_schematic.jpg)
 
