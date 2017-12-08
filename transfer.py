@@ -6,7 +6,7 @@ from inception import transfer_values_cache
 import os
 
 # Specify folder
-storage_path = 'storage_small_m'
+storage_path = 'storage_m'
 if not os.path.exists(storage_path):
     os.makedirs(storage_path)
 
@@ -17,7 +17,7 @@ label = mpimg.imread("feature_1_mcf10a.png")
 cat = np.dstack((img,label))
 
 # one loop is a crop, produces 12 examples
-loops = 4
+loops = 400
 n_examples = 8 * loops
 
 # generate a set of unique coordinates to crop from

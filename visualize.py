@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Load in trained model
-checkpoint_dir = "results/m"
+checkpoint_dir = "results_ad_lr1e7"
 s = tf.InteractiveSession()
 meta_path = os.path.join(checkpoint_dir, "final_checkpoint.meta")
 saver = tf.train.import_meta_graph(meta_path)
@@ -14,7 +14,7 @@ graph = tf.get_default_graph()
 saver.restore(s, tf.train.latest_checkpoint(checkpoint_dir))
 
 # Load in sample data
-storage_path = 'storage_small_m'
+storage_path = 'storage_small_km'
 model = inception.Inception()
 file_path_cache_train = os.path.join(storage_path, 'inception_image_train.pkl')
 transfer_values_training = transfer_values_cache(cache_path=file_path_cache_train, model=model)
@@ -27,13 +27,13 @@ print('done')
 # generate predictions
 transfer_len = model.transfer_len
 x = graph.get_tensor_by_name("x:0")
-y_ = graph.get_tensor_by_name("softmax/net_input/Sigmoid:0")
-train = graph.get_tensor_by_name("Placeholder:0")
-keep_prob = graph.get_tensor_by_name("Placeholder_1:0")
+y_ = graph.get_tensor_by_name("softmax/net_input/prediction:0") # change prediction to Sigmoid if you get error
+train = graph.get_tensor_by_name("is_training:0") # change to Placeholder if you get error
+keep_prob = graph.get_tensor_by_name("keep_prob:0") # change to Placeholder_1 if you get error
 prediction = s.run(y_, feed_dict={x: transfer_values_training, train:False, keep_prob:1})
 
 # display image
-example_index = 2
+example_index = 70
 image = transfer_values_training[example_index]
 label = labels[example_index]
 predicted = np.reshape(prediction[example_index], (299,299))

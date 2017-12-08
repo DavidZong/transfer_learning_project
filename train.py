@@ -6,7 +6,7 @@ import os
 import time
 
 # Open saved files
-storage_path = 'storage_small_m'
+storage_path = 'storage_m'
 model = inception.Inception()
 file_path_cache_train = os.path.join(storage_path, 'inception_image_train.pkl')
 transfer_values_training = transfer_values_cache(cache_path=file_path_cache_train, model=model)
@@ -99,7 +99,7 @@ accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
 
 max_iter = 10000
-batchsize = 10
+batchsize = 100
 
 # downstream, we do a 70:30 train:test split.  Unfortunately, our data is serially correlated.
 # we must shuffle it to lose this correlation.
@@ -142,7 +142,7 @@ with tf.Session() as s:
     test_summary = tf.summary.scalar("test_accuracy", accuracy)
     training_summary = tf.summary.scalar("training_accuracy", accuracy)
     saver = tf.train.Saver()
-    result_dir = 'results/m_long'
+    result_dir = 'results/m_long_b100'
     summary_writer = tf.summary.FileWriter(result_dir, s.graph)
     s.run(tf.global_variables_initializer())
 
