@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Load in trained model
-checkpoint_dir = "results_ad_lr1e7"
+checkpoint_dir = "results/m_long"
 s = tf.InteractiveSession()
 meta_path = os.path.join(checkpoint_dir, "final_checkpoint.meta")
 saver = tf.train.import_meta_graph(meta_path)
@@ -14,7 +14,7 @@ graph = tf.get_default_graph()
 saver.restore(s, tf.train.latest_checkpoint(checkpoint_dir))
 
 # Load in sample data
-storage_path = 'storage_small_km'
+storage_path = 'storage_small_m'
 model = inception.Inception()
 file_path_cache_train = os.path.join(storage_path, 'inception_image_train.pkl')
 transfer_values_training = transfer_values_cache(cache_path=file_path_cache_train, model=model)
@@ -33,24 +33,22 @@ keep_prob = graph.get_tensor_by_name("keep_prob:0") # change to Placeholder_1 if
 prediction = s.run(y_, feed_dict={x: transfer_values_training, train:False, keep_prob:1})
 
 # display image
-example_index = 70
-image = transfer_values_training[example_index]
-label = labels[example_index]
-predicted = np.reshape(prediction[example_index], (299,299))
+def plot_images_at_index(example_index):
+    label = labels[example_index]
+    predicted = np.reshape(prediction[example_index], (299, 299))
 
+    # display with thresholding
+    threshold = 0.5
+    binary_mask = (predicted > threshold).astype(np.int_)
 
-fig = plt.figure()
-ax1 = fig.add_subplot(1,2,1)
-ax1.imshow(label)
-ax2 = fig.add_subplot(1,2,2)
-ax2.imshow(predicted)
+    fig = plt.figure()
+    ax1 = fig.add_subplot(1, 3, 1)
+    ax1.imshow(label)
+    plt.axis('off')
+    ax2 = fig.add_subplot(1, 3, 2)
+    ax2.imshow(predicted)
+    plt.axis('off')
+    ax3 = fig.add_subplot(1, 3, 3)
+    ax3.imshow(binary_mask)
+    plt.axis('off')
 
-# display with thresholding
-threshold = 0.9
-binary_mask = (predicted > threshold).astype(np.int_)
-
-fig = plt.figure()
-ax1 = fig.add_subplot(1,2,1)
-ax1.imshow(label)
-ax2 = fig.add_subplot(1,2,2)
-ax2.imshow(binary_mask)
