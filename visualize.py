@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Load in trained model
-checkpoint_dir = "results/test_small2"
+checkpoint_dir = "results_lr10e4/"
 s = tf.InteractiveSession()
 meta_path = os.path.join(checkpoint_dir, "final_checkpoint.meta")
 saver = tf.train.import_meta_graph(meta_path)

@@ -16,6 +16,7 @@ print('\nLoading Labels...')
 proc_img_start_time = time.time()
 labels_array = np.load(label_path)
 labels = labels_array['arr_0']
+print('%s images loaded...' % len(labels))
 proc_img_end_time = time.time()
 print('done\n')
 print('Processing took %s sec\n' % (proc_img_end_time - proc_img_start_time))
@@ -54,13 +55,15 @@ def variable_summaries(var):
     tf.summary.histogram('histogram', var)
 
 # Define the model
+hidden_neurons = 512
+print('Hidden neurons: %s' % hidden_neurons)
 # Fully connected layer
 with tf.name_scope('fc1'):
     with tf.name_scope('weight'):
-        W_fc1 = weight_variable('wfc1', [transfer_len, 1024])
+        W_fc1 = weight_variable('wfc1', [transfer_len, hidden_neurons])
         variable_summaries(W_fc1)
     with tf.name_scope('bias'):
-        b_fc1 = bias_variable([1024])
+        b_fc1 = bias_variable([hidden_neurons])
         variable_summaries(b_fc1)
     with tf.name_scope('net_input'):
         z_fc1 = tf.matmul(x, W_fc1) + b_fc1
@@ -78,7 +81,7 @@ h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
 # softmax
 with tf.name_scope('softmax'):
     with tf.name_scope('weight'):
-        W_fc2 = weight_variable('wfc2', [1024, output_len])
+        W_fc2 = weight_variable('wfc2', [hidden_neurons, output_len])
         variable_summaries(W_fc2)
     with tf.name_scope('bias'):
         b_fc2 = bias_variable([output_len])
@@ -92,14 +95,19 @@ cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(logits=y_, labels=y_true
 #cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=y_, labels=y_true)
 loss = tf.reduce_mean(cross_entropy)
 
+learning_rate = 1e-4
 with tf.control_dependencies(update_ops):
-    train_step = tf.train.AdamOptimizer(1e-6).minimize(loss)
+    train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
+    #train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
+    print('\nUsing Adam Opt with learning rate %s\n' % learning_rate)
+    #print('\nUsing Grad Descent with learning rate %s\n' % learning_rate)
 correct_prediction = tf.equal(tf.round(y_), y_true)
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
 
 max_iter = 1000
-batchsize = 100
+batchsize = 10
+print('Batch size: %s\n' % batchsize)
 
 
 # flatten labels, convert to a non-one hot vector encoding (9000 1s or 0s).
@@ -127,7 +135,8 @@ with tf.Session() as s:
     test_summary = tf.summary.scalar("test_accuracy", accuracy)
     training_summary = tf.summary.scalar("training_accuracy", accuracy)
     saver = tf.train.Saver()
-    result_dir = 'results_lr10e6'
+    result_dir = 'results_ad_hn512_lr1e4'
+    print('\nResults written to %s\n' % result_dir)
     summary_writer = tf.summary.FileWriter(result_dir, s.graph)
     s.run(tf.global_variables_initializer())
 
