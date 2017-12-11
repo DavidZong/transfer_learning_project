@@ -22,7 +22,8 @@ print('done\n')
 print('Processing took %s sec\n' % (proc_img_end_time - proc_img_start_time))
 
 # Initialize variables for 3 layer network
-transfer_len = model.transfer_len
+#transfer_len = model.transfer_len
+transfer_len = 2048
 output_len = 89401
 
 
@@ -34,9 +35,10 @@ y_true = tf.placeholder(tf.float32, shape=[None, output_len], name='y_true')
 train = tf.placeholder(tf.bool, name='is_training')
 
 # helper function to make a weight variable
-def weight_variable(name, shape):
-    initial = tf.contrib.layers.xavier_initializer()
-    return tf.get_variable(name, shape, initializer=initial)
+def weight_variable(shape, name):
+    #initial = tf.contrib.layers.xavier_initializer()
+    initial = tf.truncated_normal(shape, stddev=0.1)
+    return tf.Variable(initial)
 
 # helper function to make a bias variable
 def bias_variable(shape):
@@ -55,12 +57,13 @@ def variable_summaries(var):
     tf.summary.histogram('histogram', var)
 
 # Define the model
-hidden_neurons = 512
+hidden_neurons = 1024
 print('Hidden neurons: %s' % hidden_neurons)
+
 # Fully connected layer
 with tf.name_scope('fc1'):
     with tf.name_scope('weight'):
-        W_fc1 = weight_variable('wfc1', [transfer_len, hidden_neurons])
+        W_fc1 = weight_variable([transfer_len, hidden_neurons], 'wfc1')
         variable_summaries(W_fc1)
     with tf.name_scope('bias'):
         b_fc1 = bias_variable([hidden_neurons])
@@ -73,6 +76,8 @@ with tf.name_scope('fc1'):
     with tf.name_scope('activation'):
         h_fc1 = tf.nn.relu(bn_fc1)
         variable_summaries(h_fc1)
+print('Using ReLU')
+#print('Using elu')
 
 # Apply dropout
 keep_prob = tf.placeholder(tf.float32, name='keep_prob')
@@ -81,7 +86,7 @@ h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
 # softmax
 with tf.name_scope('softmax'):
     with tf.name_scope('weight'):
-        W_fc2 = weight_variable('wfc2', [hidden_neurons, output_len])
+        W_fc2 = weight_variable([hidden_neurons, output_len], 'wfc2')
         variable_summaries(W_fc2)
     with tf.name_scope('bias'):
         b_fc2 = bias_variable([output_len])
@@ -95,18 +100,18 @@ cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(logits=y_, labels=y_true
 #cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=y_, labels=y_true)
 loss = tf.reduce_mean(cross_entropy)
 
-learning_rate = 1e-4
+learning_rate = 1e-04
 with tf.control_dependencies(update_ops):
     train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
-    #train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
-    print('\nUsing Adam Opt with learning rate %s\n' % learning_rate)
-    #print('\nUsing Grad Descent with learning rate %s\n' % learning_rate)
+#    train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
+    print('Using Adam Opt with learning rate %s' % learning_rate)
+#    print('\nUsing Grad Descent with learning rate %s\n' % learning_rate)
 correct_prediction = tf.equal(tf.round(y_), y_true)
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
 
-max_iter = 1000
-batchsize = 10
+max_iter = 5000
+batchsize = 20
 print('Batch size: %s\n' % batchsize)
 
 # downstream, we do a 70:30 train:test split.  Unfortunately, our data is serially correlated.
@@ -142,6 +147,7 @@ train_data = tv_shuffled[test_size:]
 start_time = time.time()
 print('\nStart time: ' + time.strftime("%a, %d %b %Y %H:%M:%S +0000",
                                         time.gmtime()) + '\n')
+print('_________________________________________________________')
 # Training loop
 with tf.Session() as s:
     # setup summary writer
@@ -150,10 +156,10 @@ with tf.Session() as s:
     test_summary = tf.summary.scalar("test_accuracy", accuracy)
     training_summary = tf.summary.scalar("training_accuracy", accuracy)
     saver = tf.train.Saver()
-    result_dir = 'results_ad_hn512_lr1e4'
-    print('\nResults written to %s\n' % result_dir)
+    result_dir = 'results_ad_lr1e04_init'
     summary_writer = tf.summary.FileWriter(result_dir, s.graph)
     s.run(tf.global_variables_initializer())
+    print(s.run(tf.report_uninitialized_variables()))
 
     # Loop optimization
     batch_x = np.zeros([batchsize, model.transfer_len])
@@ -187,5 +193,6 @@ with tf.Session() as s:
     saver.save(s, checkpoint_file)
 
 end_time = time.time()
+print('\nResults written to: %s' % result_dir)
 print('Total sec: %s sec' % (end_time-start_time))
 print('Total min: %s min\n' % ((end_time-start_time)/60.0))
