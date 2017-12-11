@@ -6,7 +6,7 @@ import os
 import time
 
 # Open saved files
-storage_path = 'storage_m'
+storage_path = 'storage_small_m_shuffled'
 model = inception.Inception()
 file_path_cache_train = os.path.join(storage_path, 'inception_image_train.pkl')
 transfer_values_training = transfer_values_cache(cache_path=file_path_cache_train, model=model)
@@ -100,36 +100,21 @@ correct_prediction = tf.equal(tf.round(y_), y_true)
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
 
-max_iter = 9000
+max_iter = 1000
 batchsize = 20
 
-# downstream, we do a 70:30 train:test split.  Unfortunately, our data is serially correlated.
-# we must shuffle it to lose this correlation.
-# we randomly shuffle the label matrices and transfer value matrices together
-
-# reshape so we can combine labels and transfer values (we'll un-reshape later)
-labels_tvs = np.c_[labels.reshape(len(labels),-1),
-                               transfer_values_training.reshape(len(transfer_values_training),-1)]
-
-# shuffle this combined matrix
-np.random.shuffle(labels_tvs)
-
-# "un-reshaping"
-labels_shuffled = labels_tvs[:, :labels.size//len(labels)].reshape(labels.shape)
-tv_shuffled = labels_tvs[:, labels.size//len(labels):].reshape(transfer_values_training.shape)
 
 # flatten labels, convert to a non-one hot vector encoding (9000 1s or 0s).
 f_labels = np.zeros([labels.shape[0], output_len])
 for i in range(labels.shape[0]):
-    # f_labels uses shuffled labels
-    f_labels[i] = labels_shuffled[i].flatten()
+    f_labels[i] = labels[i].flatten()
 
 # separate data set to training and test sets 70/30 split (roughly)
 test_size = round(0.3 * labels.shape[0])
 test_labels = f_labels[0:test_size]
 train_labels = f_labels[test_size:]
-test_data = tv_shuffled[0:test_size]
-train_data = tv_shuffled[test_size:]
+test_data = transfer_values_training[0:test_size]
+train_data = transfer_values_training[test_size:]
 
 
 
@@ -144,7 +129,7 @@ with tf.Session() as s:
     test_summary = tf.summary.scalar("test_accuracy", accuracy)
     training_summary = tf.summary.scalar("training_accuracy", accuracy)
     saver = tf.train.Saver()
-    result_dir = 'results/mam_largeset_9000iter_20batch'
+    result_dir = 'results/mam_largeset_9000iter_20batch_pre-shuffled'
     summary_writer = tf.summary.FileWriter(result_dir, s.graph)
     s.run(tf.global_variables_initializer())
 

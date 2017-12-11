@@ -6,7 +6,7 @@ from inception import transfer_values_cache
 import os
 
 # Specify folder
-storage_path = 'storage_small_m'
+storage_path = 'storage_small_m_shuffled'
 if not os.path.exists(storage_path):
     os.makedirs(storage_path)
 
@@ -24,6 +24,8 @@ n_examples = 8 * loops
 max_x = cat.shape[0]-299
 max_y = cat.shape[1]-299
 cord_set = set()
+
+np.random.seed(0)
 while len(cord_set) < loops:
     x, y = np.random.choice(max_x - 1), np.random.choice(max_y - 1)
     cord_set.add((x, y))
@@ -51,6 +53,8 @@ while i < n_examples:
 
     i = i + 8
 
+# shuffle images to remove serial correlations
+np.random.shuffle(images)
 labels = images[:,:,:,3]
 # save the labels so they can be used later, the ordering is the same as the images
 print("saving labels...")
