@@ -6,7 +6,7 @@ import os
 import time
 
 # Open saved files
-storage_path = 'storage_small_m'
+storage_path = 'storage_m'
 model = inception.Inception()
 file_path_cache_train = os.path.join(storage_path, 'inception_image_train.pkl')
 transfer_values_training = transfer_values_cache(cache_path=file_path_cache_train, model=model)
@@ -34,8 +34,9 @@ train = tf.placeholder(tf.bool)
 
 # helper function to make a weight variable
 def weight_variable(name, shape):
+    scale = 1e-4
     initial = tf.contrib.layers.xavier_initializer()
-    return tf.get_variable(name, shape, initializer=initial)
+    return tf.get_variable(name, shape, initializer=initial, regularizer=tf.contrib.layers.l2_regularizer(scale))
 
 # helper function to make a bias variable
 def bias_variable(shape):
@@ -88,7 +89,8 @@ with tf.name_scope('softmax'):
         variable_summaries(y_)
 
 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(logits=y_, labels=y_true)
+regularization = tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
+cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(logits=y_, labels=y_true) + regularization
 #cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=y_, labels=y_true)
 loss = tf.reduce_mean(cross_entropy)
 
@@ -99,7 +101,7 @@ accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
 
 max_iter = 9000
-batchsize = 10
+batchsize = 20
 
 # downstream, we do a 70:30 train:test split.  Unfortunately, our data is serially correlated.
 # we must shuffle it to lose this correlation.
@@ -142,7 +144,7 @@ with tf.Session() as s:
     test_summary = tf.summary.scalar("test_accuracy", accuracy)
     training_summary = tf.summary.scalar("training_accuracy", accuracy)
     saver = tf.train.Saver()
-    result_dir = 'results/mam_9000iter'
+    result_dir = 'results/mam_largeset_9000iter_20batch'
     summary_writer = tf.summary.FileWriter(result_dir, s.graph)
     s.run(tf.global_variables_initializer())
 

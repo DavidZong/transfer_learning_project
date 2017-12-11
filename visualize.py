@@ -6,15 +6,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Load in trained model
-checkpoint_dir = "results/m_long"
+checkpoint_dir = "results/results_gd_lr05_leakyrelu"
 s = tf.InteractiveSession()
 meta_path = os.path.join(checkpoint_dir, "final_checkpoint.meta")
 saver = tf.train.import_meta_graph(meta_path)
+tf.reset_default_graph() #need to do this otherwise getting graph will crash the program
 graph = tf.get_default_graph()
 saver.restore(s, tf.train.latest_checkpoint(checkpoint_dir))
 
 # Load in sample data
-storage_path = 'storage_small_m'
+storage_path = 'storage_small_km'
 model = inception.Inception()
 file_path_cache_train = os.path.join(storage_path, 'inception_image_train.pkl')
 transfer_values_training = transfer_values_cache(cache_path=file_path_cache_train, model=model)
