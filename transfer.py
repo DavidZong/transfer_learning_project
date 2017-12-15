@@ -6,18 +6,18 @@ from inception import transfer_values_cache
 import os
 
 # Specify folder
-storage_path = 'storage_small_m_shuffled'
+storage_path = 'storage_b_shuffled_seed1'
 if not os.path.exists(storage_path):
     os.makedirs(storage_path)
 
 # Load in image and label
-img = mpimg.imread("phase_mcf10a.png")
-label = mpimg.imread("feature_1_mcf10a.png")
+img = mpimg.imread("phase.png")
+label = mpimg.imread("feature_1.png")
 # Stack the image and label
 cat = np.dstack((img,label))
 
 # one loop is a crop, produces 8 examples
-loops = 4
+loops = 40
 n_examples = 8 * loops
 
 # generate a set of unique coordinates to crop from
@@ -25,7 +25,7 @@ max_x = cat.shape[0]-299
 max_y = cat.shape[1]-299
 cord_set = set()
 
-np.random.seed(0)
+np.random.seed(1)
 while len(cord_set) < loops:
     x, y = np.random.choice(max_x - 1), np.random.choice(max_y - 1)
     cord_set.add((x, y))

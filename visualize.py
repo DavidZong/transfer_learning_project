@@ -4,9 +4,10 @@ import inception
 from inception import transfer_values_cache
 import numpy as np
 import matplotlib.pyplot as plt
+import sklearn.metrics
 
 # Load in trained model
-checkpoint_dir = "results/mam_largeset_9000iter_20batch_pre-shuffled"
+checkpoint_dir = 'results/b_shuffled_lr-1e-4_seed1'
 s = tf.InteractiveSession()
 meta_path = os.path.join(checkpoint_dir, "final_checkpoint.meta")
 saver = tf.train.import_meta_graph(meta_path)
@@ -15,7 +16,7 @@ graph = tf.get_default_graph()
 saver.restore(s, tf.train.latest_checkpoint(checkpoint_dir))
 
 # Load in sample data
-storage_path = 'storage_small_m'
+storage_path = 'storage_b_shuffled_seed1'
 model = inception.Inception()
 file_path_cache_train = os.path.join(storage_path, 'inception_image_train.pkl')
 transfer_values_training = transfer_values_cache(cache_path=file_path_cache_train, model=model)
@@ -51,32 +52,54 @@ def plot_images_at_index(example_index,plot_phase = False):
     # display with thresholding
     threshold = 0.5
     binary_mask = (predicted > threshold).astype(np.int_)
-
+    confusion_matrix = np.abs((predicted - label))
+    # jaccard index
+    ji = sklearn.metrics.jaccard_similarity_score(np.int64(np.ndarray.flatten(label)),np.int64(np.ndarray.flatten(binary_mask)))
+    print('Jaccard index is %s' % (np.around(ji,3)))
     if plot_phase == False:
 
         fig = plt.figure()
-        ax1 = fig.add_subplot(1, 3, 1)
+        plt.axis('off')
+        plt.title('Jaccard index = %s' % (np.around(ji,3)))
+        ax1 = fig.add_subplot(1, 4, 1)
         ax1.imshow(label)
         plt.axis('off')
-        ax2 = fig.add_subplot(1, 3, 2)
+        plt.title('Ground Truth')
+        ax2 = fig.add_subplot(1, 4, 2)
         ax2.imshow(predicted)
         plt.axis('off')
-        ax3 = fig.add_subplot(1, 3, 3)
+        plt.title('Prediction')
+        ax3 = fig.add_subplot(1, 4, 3)
         ax3.imshow(binary_mask)
         plt.axis('off')
+        plt.title('Thresholded Prediction')
+        ax4 = fig.add_subplot(1, 4, 4)
+        ax4.imshow(confusion_matrix)
+        plt.axis('off')
+        plt.title('Confusion Matrix')
 
     else:
         plottable_image = images[example_index] #np.reshape(prediction[example_index], (299, 299))
         fig = plt.figure()
-        ax1 = fig.add_subplot(1, 4, 1)
+        plt.axis('off')
+        plt.title('Jaccard index = %s' % (np.around(ji,3)))
+        ax1 = fig.add_subplot(1, 5, 1)
         ax1.imshow(plottable_image)
         plt.axis('off')
-        ax2 = fig.add_subplot(1, 4, 2)
+        plt.title('Microscopy Image')
+        ax2 = fig.add_subplot(1, 5, 2)
         ax2.imshow(label)
         plt.axis('off')
-        ax3 = fig.add_subplot(1, 4, 3)
+        plt.title('Ground Truth')
+        ax3 = fig.add_subplot(1, 5, 3)
         ax3.imshow(predicted)
         plt.axis('off')
-        ax4 = fig.add_subplot(1, 4, 4)
+        plt.title('Prediction')
+        ax4 = fig.add_subplot(1, 5, 4)
         ax4.imshow(binary_mask)
         plt.axis('off')
+        plt.title('Thresholded Prediction')
+        ax5 = fig.add_subplot(1, 5, 5)
+        ax5.imshow(confusion_matrix)
+        plt.axis('off')
+        plt.title('Confusion Matrix')
